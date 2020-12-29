@@ -7,6 +7,7 @@ from zoneminder.zm import ZoneMinder
 from homeassistant.const import (
     ATTR_ID,
     ATTR_NAME,
+    ATTR_STATE,
     CONF_HOST,
     CONF_PASSWORD,
     CONF_PATH,
@@ -42,6 +43,11 @@ HOST_CONFIG_SCHEMA = vol.Schema(
 
 CONFIG_SCHEMA = vol.Schema(
     {DOMAIN: vol.All(cv.ensure_list, [HOST_CONFIG_SCHEMA])}, extra=vol.ALLOW_EXTRA
+)
+
+SERVICE_SET_FORCE_ALARM_STATE = "set_force_alarm_state"
+SET_FORCE_ALARM_STATE_SCHEMA = vol.Schema(
+    {vol.Required(ATTR_NAME): cv.string, vol.Required(ATTR_ID): cv.string, vol.Required(ATTR_STATE): cv.string}
 )
 
 SERVICE_SET_RUN_STATE = "set_run_state"
@@ -87,8 +93,37 @@ def setup(hass, config):
                 state_name,
             )
 
+    def set_force_alarm_state(call):
+        """Set the ZoneMinder force alarm to the given state."""
+        zm_name = call.data[ATTR_NAME]
+        monitor_id = int(call.data[ATTR_ID])
+        is_alarm_on = call.data[ATTR_STATE] == "on"
+
+        if zm_name not in hass.data[DOMAIN]:
+            _LOGGER.error("Invalid ZoneMinder host provided: %s", zm_name)
+
+        monitors = hass.data[DOMAIN][zm_name].get_monitors()
+        if not monitors:
+            _LOGGER.error(
+                "Unable to get ZoneMinder monitors. Host: {}".format(zm_name, is_alarm_on)
+            )
+
+        for monitor in monitors:
+            if monitor.id == monitor_id:
+                monitor.set_force_alarm_state(is_alarm_on)
+                return
+
+        _LOGGER.error("Unable to found ZoneMinder monitor. Host: {}, Monitor: {}, State: {}".format(
+            zm_name,
+            monitor_id,
+            is_alarm_on
+        ))
+
     hass.services.register(
         DOMAIN, SERVICE_SET_RUN_STATE, set_active_state, schema=SET_RUN_STATE_SCHEMA
+    )
+    hass.services.register(
+        DOMAIN, SERVICE_SET_FORCE_ALARM_STATE, set_force_alarm_state, schema=SET_FORCE_ALARM_STATE_SCHEMA
     )
 
     hass.async_create_task(

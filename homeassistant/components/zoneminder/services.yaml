@@ -4,3 +4,16 @@ set_run_state:
     name:
       description: The string name of the ZoneMinder run state to set as active.
       example: "Home"
+
+set_force_alarm_state:
+  description: Set the ZoneMinder force alarm state
+  fields:
+    name:
+      description: Name of the ZoneMinder host in configuration.
+      example: "zoneminder.local:80"
+    monitor:
+      description: Monitor ID of the ZoneMinder for new force alarm state.
+      example: 1
+    state:
+      description: The string state ('on' or 'off') of the ZoneMinder force alarm state.
+      example: "on"
